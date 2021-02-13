@@ -26,7 +26,7 @@ class MetricsMapper:
         Parameters
         ----------
         tags : list of str
-            Human readable names for the 
+            Human readable names for the
             metrics to monitor. They correspond
             to actual record types.
 

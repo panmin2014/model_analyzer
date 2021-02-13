@@ -23,6 +23,7 @@ from .config_object import ConfigObject
 from .config_list_generic import ConfigListGeneric
 from .config_model import ConfigModel
 from .config_union import ConfigUnion
+from .config_sweep import ConfigSweep
 from model_analyzer.model_analyzer_exceptions \
     import TritonModelAnalyzerException
 from .config_enum import ConfigEnum
@@ -37,7 +38,6 @@ class AnalyzerConfig:
     """
     Model Analyzer config object.
     """
-
     def __init__(self):
         """
         Create a new config.
@@ -120,7 +120,7 @@ class AnalyzerConfig:
                 'The current version of Model Config is not supported by Model Analyzer.'
             )
 
-        return ConfigUnion([config_type, ConfigListGeneric(config_type)])
+        return ConfigSweep(config_type)
 
     def _get_model_config_fields(self):
         """
@@ -409,6 +409,12 @@ class AnalyzerConfig:
                 default_value='all',
                 description="List of GPU UUIDs to be used for the profiling. "
                 "Use 'all' to profile all the GPUs visible by CUDA."))
+        self._add_config(
+            ConfigField('tmp_model_repository_path',
+                        field_type=ConfigPrimitive(str),
+                        default_value='./tmp_model_repository',
+                        flags=['--tmp-model-repository-path'],
+                        description='Temporary Model Repository Path used by Model Analyzer.'))
         self._add_config(
             ConfigField('config_file',
                         field_type=ConfigPrimitive(str),

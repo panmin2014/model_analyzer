@@ -15,7 +15,7 @@
 import os
 import logging
 
-from .config.full_run_config_generator import FullRunConfigGenerator
+from .config.run_config_generator import RunConfigGenerator
 from .result.result_manager import ResultManager
 from .record.metrics_manager import MetricsManager
 from .output.file_writer import FileWriter
@@ -28,7 +28,6 @@ class Analyzer:
     model_analyzer. Configured with metrics to monitor, exposes profiling and
     result writing methods.
     """
-
     def __init__(self, config, client, metric_tags, server):
         """
         Parameters
@@ -44,6 +43,7 @@ class Analyzer:
 
         self._config = config
         self._client = client
+        self._server = server
 
         # Results Manager
         self._result_manager = ResultManager(config=config)
@@ -65,40 +65,46 @@ class Analyzer:
         TritonModelAnalyzerException
         """
 
+        config = self._config
+
         logging.info('Profiling server only metrics...')
 
+        self._server.start()
+        self._client.wait_for_server_ready(config.max_retries)
         self._metrics_manager.profile_server(
             default_value=SERVER_ONLY_TABLE_DEFAULT_VALUE)
+        self._server.stop()
 
-        for model in self._config.model_names:
-            self._client.load_model(model_name=model.model_name())
+        for run_config in RunConfigGenerator(
+                analyzer_config=self._config):
+            # TODO fix the remote mode
+            model_config = run_config.model_config()
+            model_name = model_config.get_field('name')
+            self._server.start()
+            self._client.wait_for_server_ready(config.max_retries)
+            self._client.load_model(model_name=model_name)
             self._client.wait_for_model_ready(
-                model_name=model.model_name(),
+                model_name=model_name,
                 num_retries=self._config.max_retries)
-            try:
-                for run_config in FullRunConfigGenerator(
-                        analyzer_config=self._config,
-                        model_name=model.model_name()):
 
-                    # Initialize the result
-                    self._result_manager.init_result(run_config)
+            # Initialize the result
+            self._result_manager.init_result(run_config)
 
-                    # TODO write/copy model configs
-                    for perf_config in run_config.perf_analyzer_configs():
-                        perf_output_writer = None if \
-                            self._config.no_perf_output else FileWriter()
+            for perf_config in run_config.perf_analyzer_configs():
+                perf_output_writer = None if \
+                    self._config.no_perf_output else FileWriter()
 
-                        logging.info(
-                            f"Profiling model {perf_config['model-name']}...")
-                        self._metrics_manager.profile_model(
-                            perf_config=perf_config,
-                            perf_output_writer=perf_output_writer)
+                logging.info(
+                    f"Profiling model {perf_config['model-name']}...")
+                self._metrics_manager.profile_model(
+                    perf_config=perf_config,
+                    perf_output_writer=perf_output_writer)
 
-                    # Submit the result to be sorted
-                    self._result_manager.complete_result()
-            finally:
-                self._client.unload_model(model_name=model.model_name())
+            # Submit the result to be sorted
+            self._result_manager.complete_result()
+            self._client.unload_model(model_name=model.model_name())
 
+            self._server.stop()
             # Write results to tables
             self._result_manager.compile_results()
 

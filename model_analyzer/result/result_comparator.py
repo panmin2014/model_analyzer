@@ -20,9 +20,7 @@ from model_analyzer.model_analyzer_exceptions \
 
 class ResultComparator:
     """
-    Stores information needed
-    to compare results and 
-    measurements.
+    Stores information needed to compare results and measurements.
     """
 
     def __init__(self,
@@ -72,7 +70,7 @@ class ResultComparator:
 
     def compare_results(self, result1, result2):
         """
-        Compares two results using priorities 
+        Compares two results using priorities
         specified in model analyzer config
 
         Parameters
@@ -81,11 +79,11 @@ class ResultComparator:
             first result to be compared
         result2 : RunResult
             second result to be compared
-        
+
         Returns
         -------
-        int 
-            0 
+        int
+            0
                 if the results are determined
                 to be the same within a threshold
             1
@@ -119,8 +117,8 @@ class ResultComparator:
 
         Returns
         -------
-        int 
-            0 
+        int
+            0
                 if the results are determined
                 to be the same within a threshold
             1

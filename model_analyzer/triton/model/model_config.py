@@ -14,6 +14,7 @@
 
 import os
 from google.protobuf import text_format, json_format
+from google.protobuf.descriptor import FieldDescriptor
 from tritonclient.grpc import model_config_pb2
 from model_analyzer.model_analyzer_exceptions \
     import TritonModelAnalyzerException
@@ -23,7 +24,6 @@ class ModelConfig:
     """
     A class that encapsulates all the metadata about a Triton model.
     """
-
     def __init__(self, model_config):
         """
         Parameters
@@ -99,6 +99,8 @@ class ModelConfig:
             If the path doesn't exist or the path is a file
         """
 
+        model_path = model_path + get
+
         if not os.path.exists(model_path):
             raise TritonModelAnalyzerException(
                 'Output path specified does not exist.')
@@ -109,8 +111,8 @@ class ModelConfig:
 
         model_config_bytes = text_format.MessageToBytes(self._model_config)
 
-        with open(os.path.join(model_path, "config.pbtxt"), 'wb') as f:
-            f.write(model_config_bytes)
+        #with open(os.path.join(model_path + , "config.pbtxt"), 'wb') as f:
+        #    f.write(model_config_bytes)
 
     def get_config(self):
         """
@@ -137,3 +139,23 @@ class ModelConfig:
 
         self._model_config = json_format.ParseDict(
             config, model_config_pb2.ModelConfig())
+
+    def set_field(self, name, value):
+        model_config = self._model_config
+
+        if model_config.DESCRIPTOR.fields_by_name[
+                name].label == FieldDescriptor.LABEL_REPEATED:
+            repeated_field = getattr(model_config, name)
+            del repeated_field[:]
+            repeated_field.extend(value)
+        else:
+            setattr(model_config, name, value)
+
+    def set_field_from_dict(self, model_config_dict):
+
+        for key, value in model_config_dict.items():
+            self.set_field(key, value)
+
+    def get_field(self, name):
+        model_config = self._model_config
+        return getattr(model_config, name)
